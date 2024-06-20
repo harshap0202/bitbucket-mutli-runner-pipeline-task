@@ -1,0 +1,77 @@
+definitions:
+  steps:
+    - step: &prog1
+        name: transfer file to s3
+        script:
+              - echo $BITBUCKET_BRANCH
+              - export BRANCH_NAME=$(echo $BITBUCKET_BRANCH | sed "s/[^\/]*\///")
+              - export TAGNAME=${BITBUCKET_BRANCH}-runner.1
+              - python3 ./src/random_num.py > ${TAGNAME}-random_num_output.txt
+              - cat ${TAGNAME}-random_num_output.txt
+              - aws s3 cp ${TAGNAME}.txt s3://test-bitbucket-harsh/${TAGNAME}-random_num_output.txt
+
+    - step: &prog2
+        name: transfer file to s3
+        script:
+              - echo $BITBUCKET_BRANCH
+              - export BRANCH_NAME=$(echo $BITBUCKET_BRANCH | sed "s/[^\/]*\///")
+              - export TAGNAME=${BITBUCKET_BRANCH}-runner.2
+              - python3 ./src/random_animal.py > ${TAGNAME}-random_animal_output.txt
+              - cat ${TAGNAME}-random_animal_output.txt
+              - aws s3 cp ${TAGNAME}.txt s3://test-bitbucket-harsh/${TAGNAME}-random_animal_output.txt
+
+pipelines:    
+  pull-requests:
+    '**':
+      - step:
+          <<: *prog1   
+          runs-on:
+            - runner.1
+            - self.hosted
+            - linux.shell
+
+
+  branches:
+    '{hotfix/**}':
+      - step:
+          runs-on:
+            - runner.1
+            - self.hosted
+            - linux.shell
+          script:
+            - echo $BITBUCKET_BRANCH
+            - export BRANCH_NAME=$(echo $BITBUCKET_BRANCH | sed "s/[^\/]*\///")
+            - export TAGNAME=${BRANCH_NAME}-runner.1
+            - python3 ./src/random_animal.py > ${TAGNAME}.txt
+            - cat ${TAGNAME}.txt
+            - aws s3 cp ${TAGNAME}.txt s3://test-bitbucket-harsh/${TAGNAME}.txt
+
+      - step:
+          runs-on:
+            - runner.2
+            - self.hosted
+            - linux.shell
+          script:
+            - echo $BITBUCKET_BRANCH
+            - export BRANCH_NAME=$(echo $BITBUCKET_BRANCH | sed "s/[^\/]*\///")
+            - export TAGNAME=${BRANCH_NAME}-runner.2
+            - python3 ./src/random_animal.py > ${TAGNAME}.txt
+            - cat ${TAGNAME}.txt
+            - aws s3 cp ${TAGNAME}.txt s3://test-bitbucket-harsh/${TAGNAME}.txt
+
+    '{main}':
+      - step:
+          <<: *prog2
+          runs-on:
+            - runner.2
+            - self.hosted
+            - linux.shell
+
+  tags:
+    '*':
+      - step:
+          <<: *prog2
+          runs-on:
+            - runner.2
+            - self.hosted
+            - linux.shell
